@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS listings (
     title           TEXT    NOT NULL,
     category        TEXT,
     description     TEXT,
+    url             TEXT,
     asking_price    INTEGER,            -- USD (부르는 값)
     exit_price      INTEGER,            -- USD (실제 체결가. 팔린 매물만)
     revenue_amount  INTEGER,            -- USD
@@ -46,6 +47,8 @@ CREATE TABLE IF NOT EXISTS claims (
     price        INTEGER,                   -- 추출값 (환산하지 않음)
     currency     TEXT,                      -- USD | GBP | EUR | ... (원 통화 그대로)
     direction    TEXT,                      -- sold | acquired | unknown
+    scale        TEXT,                      -- micro | small | mid | large
+    corporate    INTEGER DEFAULT 0,         -- 대기업 M&A 신호 (버리지 않고 표시만)
     points       INTEGER,
     posted_at    TEXT,
     status       TEXT    NOT NULL DEFAULT 'pending',  -- pending | approved | rejected
@@ -82,22 +85,24 @@ def upsert(conn: sqlite3.Connection, rec: dict) -> int:
         listing_id = row["id"]
         conn.execute(
             """UPDATE listings SET title=?, category=?, description=?,
+               url=COALESCE(?, url),
                asking_price=COALESCE(?, asking_price),
                exit_price=COALESCE(?, exit_price),
                revenue_amount=?, revenue_period=?, last_seen=?, raw=?
                WHERE id=?""",
-            (rec["title"], rec.get("category"), rec.get("description"),
+            (rec["title"], rec.get("category"), rec.get("description"), rec.get("url"),
              rec.get("asking_price"), rec.get("exit_price"), rec.get("revenue_amount"),
              rec.get("revenue_period", "unknown"), ts, rec.get("raw"), listing_id),
         )
     else:
         cur = conn.execute(
             """INSERT INTO listings
-               (source, external_key, title, category, description,
+               (source, external_key, title, category, description, url,
                 asking_price, exit_price, revenue_amount, revenue_period, first_seen, last_seen, raw)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (rec["source"], rec["external_key"], rec["title"], rec.get("category"),
-             rec.get("description"), rec.get("asking_price"), rec.get("exit_price"),
+             rec.get("description"), rec.get("url"),
+             rec.get("asking_price"), rec.get("exit_price"),
              rec.get("revenue_amount"),
              rec.get("revenue_period", "unknown"), ts, ts, rec.get("raw")),
         )
@@ -134,9 +139,11 @@ def upsert_claim(conn: sqlite3.Connection, rec: dict) -> bool:
         return False
     conn.execute(
         """INSERT INTO claims
-           (source, external_key, url, title, price, currency, direction, points, posted_at, found_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?)""",
+           (source, external_key, url, title, price, currency, direction, scale,
+            corporate, points, posted_at, found_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
         (rec["source"], rec["external_key"], rec["url"], rec["title"], rec.get("price"),
-         rec.get("currency"), rec.get("direction"), rec.get("points"), rec.get("posted_at"), now()),
+         rec.get("currency"), rec.get("direction"), rec.get("scale"),
+         1 if rec.get("corporate") else 0, rec.get("points"), rec.get("posted_at"), now()),
     )
     return True

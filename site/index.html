@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What Indie Products Actually Sold For</title>
+<meta name="description" content="Real sale prices of small software products — collected from marketplace exits and public founder disclosures. Not asking prices.">
+<style>
+  :root {
+    --bg:#fbfaf8; --fg:#1a1a18; --muted:#6c6a66; --line:#e4e1db;
+    --accent:#1d5c48; --card:#fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#14141a; --fg:#eceaf0; --muted:#9b98a6; --line:#2c2c36;
+      --accent:#6fd8ac; --card:#1c1c24;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#14141a; --fg:#eceaf0; --muted:#9b98a6; --line:#2c2c36;
+    --accent:#6fd8ac; --card:#1c1c24;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  .wrap { max-width:960px; margin:0 auto; padding:48px 16px 80px; }
+  h1 { font-size:clamp(28px,5vw,44px); line-height:1.15; margin:0 0 12px; letter-spacing:-.02em; }
+  .lede { color:var(--muted); font-size:18px; max-width:62ch; margin:0 0 8px; }
+  .meta { color:var(--muted); font-size:14px; margin:0 0 32px; }
+  .stats { display:flex; flex-wrap:wrap; gap:12px; margin:0 0 28px; }
+  .stat {
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:12px 16px; min-width:104px;
+  }
+  .stat b { display:block; font-size:22px; }
+  .stat span { color:var(--muted); font-size:13px; }
+  .controls { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 16px; }
+  button {
+    font:inherit; font-size:14px; padding:7px 14px; cursor:pointer;
+    background:var(--card); color:var(--fg);
+    border:1px solid var(--line); border-radius:999px;
+  }
+  button[aria-pressed="true"] { background:var(--accent); color:var(--bg); border-color:var(--accent); }
+  table { width:100%; border-collapse:collapse; font-size:15px; }
+  th, td { text-align:left; padding:11px 10px; border-bottom:1px solid var(--line); }
+  th {
+    font-size:12px; text-transform:uppercase; letter-spacing:.07em;
+    color:var(--muted); font-weight:600;
+  }
+  td.p { font-variant-numeric:tabular-nums; font-weight:650; white-space:nowrap; }
+  td.r, td.d { font-variant-numeric:tabular-nums; color:var(--muted); white-space:nowrap; }
+  td.t a { color:var(--fg); text-decoration:none; border-bottom:1px solid var(--line); }
+  td.t a:hover { color:var(--accent); border-color:var(--accent); }
+  .tag { font-size:12px; padding:2px 9px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
+  .tag.marketplace { border-color:var(--accent); color:var(--accent); }
+  .note {
+    margin-top:40px; padding:18px 20px; background:var(--card);
+    border:1px solid var(--line); border-radius:10px; font-size:14px; color:var(--muted);
+  }
+  .note b { color:var(--fg); }
+  @media (max-width:640px) {
+    td.r, th.r, td.d, th.d { display:none; }
+    .wrap { padding-top:32px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>What indie products actually sold for</h1>
+  <p class="lede">Real sale prices of small software products. Not asking prices &mdash;
+     prices someone actually paid.</p>
+  <p class="meta">22 deals &middot; updated 2026-11-17 &middot;
+     median $5,000 &middot; range $1,000&ndash;$2,000,000,000</p>
+
+  <div class="stats"><div class="stat"><b>11</b><span>~$10k</span></div><div class="stat"><b>3</b><span>$10k–100k</span></div><div class="stat"><b>4</b><span>$100k–1M</span></div><div class="stat"><b>4</b><span>$1M+</span></div></div>
+
+  <div class="controls">
+    <button data-filter="all" aria-pressed="true">All</button>
+    <button data-filter="marketplace" aria-pressed="false">Marketplace exits</button>
+    <button data-filter="community" aria-pressed="false">Founder disclosures</button>
+  </div>
+
+  <table>
+    <thead><tr>
+      <th>Price</th><th>Product</th><th class="r">Revenue</th>
+      <th>Source</th><th class="d">Date</th>
+    </tr></thead>
+    <tbody id="rows"><tr data-price="1000" data-kind="marketplace"><td class="p">$1,000</td><td class="t"><a href="https://www.microns.io/startup-listings/photo-cleaner-ios-app" target="_blank" rel="noopener nofollow">Photo Cleaner iOS App</a></td><td class="r">$1,384</td><td class="k"><span class="tag marketplace">marketplace</span></td><td class="d">—</td></tr><tr data-price="1000" data-kind="marketplace"><td class="p">$1,000</td><td class="t"><a href="https://www.microns.io/startup-listings/keto-diet-tracking-mobile-app" target="_blank" rel="noopener nofollow">Keto Diet Tracking Mobile App</a></td><td class="r">$27</td><td class="k"><span class="tag marketplace">marketplace</span></td><td class="d">—</td></tr><tr data-price="1000" data-kind="marketplace"><td class="p">$1,000</td><td class="t"><a href="https://www.microns.io/startup-listings/ai-calorie-tracker-ios-app" target="_blank" rel="noopener nofollow">AI Calorie Tracker iOS App</a></td><td class="r">$49</td><td class="k"><span class="tag marketplace">marketplace</span></td><td class="d">—</td></tr><tr data-price="1000" data-kind="marketplace"><td class="p">$1,000</td><td class="t"><a href="https://www.microns.io/startup-listings/breakup-recovery-ios-app" target="_blank" rel="noopener nofollow">Breakup Recovery iOS App</a></td><td class="r">$116</td><td class="k"><span class="tag marketplace">marketplace</span></td><td class="d">—</td></tr><tr data-price="1050" data-kind="marketplace"><td class="p">$1,050</td><td class="t"><a href="https://www.microns.io/startup-listings/energy-drink-scanner-ios-app" target="_blank" rel="noopener nofollow">Energy Drink Scanner iOS App</a></td><td class="r">$487</td><td class="k"><span class="tag marketplace">marketplace</span></td><td class="d">—</td></tr><tr data-price="2000" data-kind="marketplace"><td class="p">$2,000</td><td class="t"><a href="https://www.microns.io/startup-listings/ai-local-business-website-outreach-platform" target="_blank" rel="noopener nofollow">AI Local Business Website Outreach Platform</a></td><td class="r">$250</td><td class="k"><span class="tag marketplace">marketplace</span></td><td class="d">—</td></tr><tr data-price="2000" data-kind="marketplace"><td class="p">$2,000</td><td class="t"><a href="https://www.microns.io/startup-listings/old-photo-restore-ios-app" target="_blank" rel="noopener nofollow">Old Photo Restore iOS App</a></td><td class="r">$1,900</td><td class="k"><span class="tag marketplace">marketplace</span></td><td class="d">—</td></tr><tr data-price="4500" data-kind="community"><td class="p">$4,500</td><td class="t"><a href="https://news.ycombinator.com/item?id=30058710" target="_blank" rel="noopener nofollow">I sold my $0 revenue SaaS side project for $4.5k</a></td><td class="r">—</td><td class="k"><span class="tag community">community</span></td><td class="d">2022-01-24</td></tr><tr data-price="5000" data-kind="marketplace"><td class="p">$5,000</td><td class="t"><a href="https://www.microns.io/startup-listings/ai-real-estate-staging-platform-b4f5f" target="_blank" rel="noopener nofollow">AI Real Estate Staging Platform</a></td><td class="r">$1,800</td><td class="k"><span class="tag marketplace">marketplace</span></td><td class="d">—</td></tr><tr data-price="5000" data-kind="marketplace"><td class="p">$5,000</td><td class="t"><a href="https://www.microns.io/startup-listings/customer-feedback-and-roadmap-platform" target="_blank" rel="noopener nofollow">Customer Feedback and Roadmap Platform</a></td><td class="r">$222</td><td class="k"><span class="tag marketplace">marketplace</span></td><td class="d">—</td></tr><tr data-price="5000" data-kind="marketplace"><td class="p">$5,000</td><td class="t"><a href="https://www.microns.io/startup-listings/language-learning-platform" target="_blank" rel="noopener nofollow">Language Learning Platform</a></td><td class="r">$200</td><td class="k"><span class="tag marketplace">marketplace</span></td><td class="d">—</td></tr><tr data-price="14000" data-kind="community"><td class="p">$14,000</td><td class="t"><a href="https://news.ycombinator.com/item?id=29705694" target="_blank" rel="noopener nofollow">I just acquired my first SaaS company for $14,000. I want to share everything</a></td><td class="r">—</td><td class="k"><span class="tag community">community</span></td><td class="d">2021-12-27</td></tr><tr data-price="20000" data-kind="community"><td class="p">$20,000</td><td class="t"><a href="https://news.ycombinator.com/item?id=31252163" target="_blank" rel="noopener nofollow">Lessons learned from selling my side project for $20k</a></td><td class="r">—</td><td class="k"><span class="tag community">community</span></td><td class="d">2022-05-03</td></tr><tr data-price="30000" data-kind="community"><td class="p">$30,000</td><td class="t"><a href="https://news.ycombinator.com/item?id=24336925" target="_blank" rel="noopener nofollow">I sold my side-project for $30k</a></td><td class="r">—</td><td class="k"><span class="tag community">community</span></td><td class="d">2020-08-31</td></tr><tr data-price="100000" data-kind="community"><td class="p">$100,000</td><td class="t"><a href="https://news.ycombinator.com/item?id=28233128" target="_blank" rel="noopener nofollow">How I sold my app for +$100k via email (and why I regret it)</a></td><td class="r">—</td><td class="k"><span class="tag community">community</span></td><td class="d">2021-08-19</td></tr><tr data-price="100000" data-kind="community"><td class="p">£100,000</td><td class="t"><a href="https://news.ycombinator.com/item?id=22849655" target="_blank" rel="noopener nofollow">I sold my startup for £100k</a></td><td class="r">—</td><td class="k"><span class="tag community">community</span></td><td class="d">2020-04-12</td></tr><tr data-price="100000" data-kind="community"><td class="p">£100,000</td><td class="t"><a href="https://news.ycombinator.com/item?id=22875756" target="_blank" rel="noopener nofollow">Why I sold my startup for £100k</a></td><td class="r">—</td><td class="k"><span class="tag community">community</span></td><td class="d">2020-04-15</td></tr><tr data-price="800000" data-kind="community"><td class="p">$800,000</td><td class="t"><a href="https://news.ycombinator.com/item?id=32730751" target="_blank" rel="noopener nofollow">My bootstrapped SaaS was acquired for $800k</a></td><td class="r">—</td><td class="k"><span class="tag community">community</span></td><td class="d">2022-09-05</td></tr><tr data-price="1000000" data-kind="community"><td class="p">$1,000,000</td><td class="t"><a href="https://news.ycombinator.com/item?id=30867973" target="_blank" rel="noopener nofollow">First Startup Sold for $1M</a></td><td class="r">—</td><td class="k"><span class="tag community">community</span></td><td class="d">2022-03-31</td></tr><tr data-price="60000000" data-kind="community"><td class="p">$60,000,000</td><td class="t"><a href="https://news.ycombinator.com/item?id=36020506" target="_blank" rel="noopener nofollow">2 Yr old startup Polar Security being acquired by IBM for $60M</a></td><td class="r">—</td><td class="k"><span class="tag community">community</span></td><td class="d">2023-05-21</td></tr><tr data-price="1100000000" data-kind="community"><td class="p">$1,100,000,000</td><td class="t"><a href="https://news.ycombinator.com/item?id=25256192" target="_blank" rel="noopener nofollow">Customer Success Startup Gainsight Acquired by Vista at $1.1B Price Tag</a></td><td class="r">—</td><td class="k"><span class="tag community">community</span></td><td class="d">2020-11-30</td></tr><tr data-price="2000000000" data-kind="community"><td class="p">$2,000,000,000</td><td class="t"><a href="https://news.ycombinator.com/item?id=27377898" target="_blank" rel="noopener nofollow">ACloudGuru Acquired by Pluralsight for $2B</a></td><td class="r">—</td><td class="k"><span class="tag community">community</span></td><td class="d">2021-06-03</td></tr></tbody>
+  </table>
+
+  <div class="note">
+    <p><b>Why this exists.</b> Marketplaces publish what sellers <i>ask</i>.
+    What a product actually <i>sold</i> for is scattered across sold-listing pages
+    and founder posts, and nowhere collected.</p>
+    <p><b>How it is built.</b> Marketplace rows are published exit prices.
+    Founder-disclosure rows are mined from public posts and then read by a human
+    before they appear here &mdash; automated extraction alone got the price wrong often
+    enough that it could not be trusted unreviewed. Amounts are kept in the currency
+    they were stated in; nothing is converted, because the rate on the day of an old
+    deal is unknown. Every row links to its source.</p>
+  </div>
+</div>
+<script>
+  const btns = document.querySelectorAll('[data-filter]');
+  btns.forEach(b => b.addEventListener('click', () => {
+    btns.forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    const f = b.dataset.filter;
+    document.querySelectorAll('#rows tr').forEach(tr => {
+      tr.style.display = (f === 'all' || tr.dataset.kind === f) ? '' : 'none';
+    });
+  }));
+</script>
+</body>
+</html>

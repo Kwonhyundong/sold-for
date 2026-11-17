@@ -19,6 +19,7 @@ API = "https://hn.algolia.com/api/v1/search"
 
 # 이 패턴들이 '거래가 일어났다'는 신호다
 QUERIES = [
+    # 개인·소액 거래 (희소한 구간. 커뮤니티 글에만 남는다)
     "I sold my SaaS",
     "I sold my app",
     "I sold my side project",
@@ -28,6 +29,16 @@ QUERIES = [
     "I acquired a SaaS",
     "exit price side project",
     "sold my micro SaaS",
+    "sold my domain for",
+    "sold my newsletter",
+    "acquired my company",
+    "我的项目卖了",
+    # 대형 거래 (뉴스에 많이 남는다. 양으로 데이터베이스를 채운다)
+    "acquired for $ million",
+    "acquires startup for",
+    "acquisition price announced",
+    "startup acquired by",
+    "exits for million",
 ]
 
 # 달러만 보면 "£100k 에 팔았다" 같은 기록을 통째로 놓친다.
@@ -46,13 +57,29 @@ _I_BOUGHT = re.compile(r"\b(?:i|we)\s+(?:just\s+)?(?:acquired|bought)\b", re.I)
 INDIE_HINTS = re.compile(
     r"\b(my|i|solo|side ?project|indie|bootstrap\w*|micro[- ]?saas|first)\b", re.I)
 
-# 대기업 M&A 노이즈. 이게 걸리면 개인 거래가 아니다.
+# 대기업 M&A 신호. 버리지 않고 표시만 한다 —
+# 대형 거래도 데이터로서 값지고, 뉴스에 널려 있어 양이 많다.
+# 희소한 건 소액 구간이고, 그건 아래 scale 로 구분된다.
 CORP_HINTS = re.compile(
     r"\b(private equity|shareholders?|nasdaq|nyse|all[- ]cash deal|"
     r"merger agreement|board of directors|investor group|antitrust)\b", re.I)
 
-# 이 금액을 넘으면 개인 인디 거래로 보지 않는다 (USD)
-MAX_INDIE_PRICE = 2_000_000
+# 거래 규모 구간 (USD 기준).
+SCALE_BANDS = [
+    (10_000, "micro"),        # 주말에 만든 것 ~ 인디 소형. 아무도 안 모으는 구간
+    (100_000, "small"),       # 제대로 된 1인 제품
+    (1_000_000, "mid"),       # 소규모 사업
+]
+
+
+def scale_of(price: int | None) -> str | None:
+    """거래 규모 구간. 통화 환산은 하지 않으므로 USD 가 아니면 대략치다."""
+    if price is None:
+        return None
+    for ceiling, name in SCALE_BANDS:
+        if price < ceiling:
+            return name
+    return "large"
 
 
 def _amount(num: str, suffix: str | None) -> int | None:
@@ -104,17 +131,17 @@ def extract(title: str) -> dict | None:
     """
     if not _SALE_VERB.search(title):
         return None
-    if CORP_HINTS.search(title):
-        return None
-    if not INDIE_HINTS.search(title):
-        return None
     got = _price_from(title)
+    if got is None and not INDIE_HINTS.search(title):
+        # 금액도 없고 개인 제품 신호도 없으면 거래 기록으로 볼 근거가 없다
+        return None
+    corporate = bool(CORP_HINTS.search(title))
     if got is None:
-        return {"price": None, "currency": None, "direction": _direction(title)}
+        return {"price": None, "currency": None, "scale": None,
+                "corporate": corporate, "direction": _direction(title)}
     price, currency = got
-    if currency == "USD" and price > MAX_INDIE_PRICE:
-        return None            # 개인 거래로 보기엔 너무 큰 금액
-    return {"price": price, "currency": currency, "direction": _direction(title)}
+    return {"price": price, "currency": currency, "scale": scale_of(price),
+            "corporate": corporate, "direction": _direction(title)}
 
 
 def search(query: str, *, hits: int = 50, since_days: int = 2600,
@@ -153,6 +180,8 @@ def mine() -> list[dict]:
                 "title": title,
                 "price": got["price"],
                 "currency": got["currency"],
+                "scale": got["scale"],
+                "corporate": got["corporate"],
                 "direction": got["direction"],
                 "points": hit.get("points"),
                 "posted_at": (datetime.fromtimestamp(created, timezone.utc).date().isoformat()

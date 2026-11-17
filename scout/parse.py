@@ -50,6 +50,46 @@ _PAIR = re.compile(
 )
 
 
+def _slugify(text: str) -> str:
+    return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", (text or "").lower())).strip("-")
+
+
+def _slug_matches(slug: str, title: str) -> bool:
+    """링크 슬러그가 정말 이 제목의 것인지 확인한다.
+
+    카드 레이아웃이 한 가지가 아니라서, 조각 안에서 처음 찾은 링크가
+    옆 카드 것일 수 있다. 실제로 'Photo Cleaner' 제목에
+    'keto-diet-tracking' 링크가 붙는 일이 있었다.
+    제목 단어와 슬러그 단어가 전혀 안 겹치면 그 링크는 믿지 않는다.
+    """
+    want = {w for w in _slugify(title).split("-") if len(w) > 2}
+    have = {w for w in (slug or "").split("-") if len(w) > 2}
+    if not want:
+        return True
+    return len(want & have) >= max(1, min(2, len(want) // 3))
+
+
+def _best_slug(title: str, slugs: list[str]) -> str | None:
+    """제목에 가장 잘 맞는 슬러그를 페이지 전체에서 고른다.
+
+    카드 레이아웃이 두 가지라, 어떤 카드는 링크가 제목보다 앞에 온다.
+    조각 안에서 링크를 찾으면 옆 카드 것을 집는 일이 생겨서
+    (실제로 매물의 3분의 1이 그랬다) 위치 대신 내용으로 짝짓는다.
+    Webflow 슬러그는 제목에서 만들어지므로 단어가 겹친다.
+    """
+    want = {w for w in _slugify(title).split("-") if len(w) > 2}
+    if not want:
+        return None
+    best, best_score = None, 0
+    for slug in slugs:
+        have = {w for w in slug.split("-") if len(w) > 2}
+        score = len(want & have)
+        if score > best_score:
+            best, best_score = slug, score
+    # 제목 단어의 절반 넘게 겹쳐야 같은 매물로 본다
+    return best if best_score >= max(1, len(want) // 2) else None
+
+
 def parse_microns(page: str) -> tuple[list[dict], list[str]]:
     """Microns.io 리스팅 파싱. (매물목록, 경고목록) 을 돌려준다.
 
@@ -59,6 +99,7 @@ def parse_microns(page: str) -> tuple[list[dict], list[str]]:
     out: list[dict] = []
     warnings: list[str] = []
 
+    all_slugs = re.findall(r'href="/startup-listings/([^"]+)"', page)
     chunks = page.split('class="listing-card-headings"')[1:]
     for idx, chunk in enumerate(chunks):
         try:
@@ -74,7 +115,6 @@ def parse_microns(page: str) -> tuple[list[dict], list[str]]:
                 chunk, re.S)
             # 카테고리 태그는 카드 종류에 따라 headings 앞/뒤 모두 올 수 있다
             tag_m = re.search(r'class="tag-mc".*?<div>([^<]{2,40})</div>', chunk, re.S)
-            slug_m = re.search(r'href="/startup-listings/([^"]+)"', chunk)
 
             pairs = _PAIR.findall(chunk)
             asking = revenue = exit_price = None
@@ -106,10 +146,15 @@ def parse_microns(page: str) -> tuple[list[dict], list[str]]:
                 warnings.append(
                     f"[{title[:40]}] 한 카드에서 호가 {n_asking} / 매출 {n_revenue} / 체결 {n_exit} 발견 — 경계 의심")
 
+            slug = _best_slug(title, all_slugs)
+            if slug is None:
+                warnings.append(f"[{title[:44]}] 맞는 링크를 못 찾음 — 목록 페이지로 연결")
+
             out.append({
                 "source": "microns",
-                "external_key": slug_m.group(1) if slug_m
-                                else re.sub(r"\W+", "-", title.lower())[:80],
+                "external_key": slug or _slugify(title)[:80],
+                "url": (f"https://www.microns.io/startup-listings/{slug}" if slug
+                        else "https://www.microns.io/"),
                 "title": title,
                 "category": _text(tag_m.group(1)) if tag_m else None,
                 "description": _text(desc_m.group(1)) if desc_m else None,
