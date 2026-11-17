@@ -59,6 +59,22 @@ CREATE TABLE IF NOT EXISTS claims (
 );
 
 CREATE INDEX IF NOT EXISTS idx_claims_status ON claims(status, price);
+
+-- 수집이 언제 돌았고 각 소스가 뭘 돌려줬는지.
+-- 이게 없으면 "어제도 돌긴 했나"를 알 방법이 없다.
+CREATE TABLE IF NOT EXISTS runs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at  TEXT NOT NULL,
+    finished_at TEXT,
+    source      TEXT NOT NULL,
+    fetched     INTEGER DEFAULT 0,   -- 파싱된 레코드 수
+    added       INTEGER DEFAULT 0,   -- 새로 들어온 수
+    gone        INTEGER DEFAULT 0,   -- 목록에서 사라진 수
+    warnings    INTEGER DEFAULT 0,
+    ok          INTEGER DEFAULT 1
+);
+
+CREATE INDEX IF NOT EXISTS idx_runs_time ON runs(started_at);
 """
 
 
@@ -152,3 +168,14 @@ def upsert_claim(conn: sqlite3.Connection, rec: dict) -> bool:
          1 if rec.get("corporate") else 0, rec.get("points"), rec.get("posted_at"), now()),
     )
     return True
+
+
+def record_run(conn: sqlite3.Connection, *, started: str, source: str,
+               fetched: int, added: int, gone: int, warnings: int, ok: bool) -> None:
+    """수집 1회·소스 1개의 결과를 남긴다."""
+    conn.execute(
+        """INSERT INTO runs
+           (started_at, finished_at, source, fetched, added, gone, warnings, ok)
+           VALUES (?,?,?,?,?,?,?,?)""",
+        (started, now(), source, fetched, added, gone, warnings, 1 if ok else 0),
+    )

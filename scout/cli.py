@@ -32,25 +32,46 @@ SOURCES = {
 
 def collect() -> None:
     conn = store.connect()
+    started = store.now()
     total = 0
     for name, (urls, parser) in SOURCES.items():
         seen: set[int] = set()
         records: list[dict] = []
+        n_warn = 0
+        reached = 0                 # 실제로 응답을 받아온 URL 수
         for url in urls:
             print(f"[{name}] 수집 중 … {url}")
             try:
                 page = fetch.get(url)
             except RuntimeError as e:
-                print(f"[{name}] 실패: {e}")
+                print(f"[{name}] 가져오기 실패: {e}")
                 continue
+            reached += 1
             page_records, warnings = parser(page)
+            n_warn += len(warnings)
             for w in warnings:
                 print(f"  ! {w}")
             records.extend(page_records)
+
         for rec in records:
             rec["source"] = name
             seen.add(store.upsert(conn, rec))
+
+        # 한 페이지도 못 받았으면 "매물이 사라진 것"이 아니라 "우리가 못 본 것"이다.
+        # 그걸 구분하지 않으면 차단 한 번에 가짜 판매 기록이 무더기로 생긴다.
+        if reached == 0:
+            print(f"[{name}] 응답 없음 — 기존 {name} 데이터는 그대로 두고 넘어갑니다")
+            store.record_run(conn, started=started, source=name, fetched=0,
+                             added=0, gone=0, warnings=n_warn, ok=False)
+            conn.commit()
+            continue
+
         gone = store.mark_absent(conn, name, seen)
+        before = conn.execute(
+            "SELECT COUNT(*) c FROM listings WHERE source=?", (name,)).fetchone()["c"]
+        store.record_run(conn, started=started, source=name,
+                         fetched=len(records), added=before, gone=gone,
+                         warnings=n_warn, ok=bool(records))
         conn.commit()
         total += len(records)
         print(f"[{name}] 매물 {len(records)}건 저장, 목록에서 사라진 것 {gone}건")
