@@ -1,0 +1,47 @@
+name: deploy
+
+# site/ 를 GitHub Pages 로 올린다.
+# 수집 워크플로가 커밋을 밀면 그 push 로 이 워크플로가 이어서 돈다.
+on:
+  push:
+    branches: [claude/inspiring-cray-24l5l4]
+    paths:
+      - "site/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포는 한 번에 하나만. 뒤에 들어온 것이 이긴다.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: 올릴 파일이 있는지 확인
+        # 빈 디렉터리를 올려 사이트를 날리는 사고를 막는다
+        run: |
+          test -s site/index.html || { echo "site/index.html 이 없거나 비어 있다"; exit 1; }
+          echo "크기: $(wc -c < site/index.html) bytes"
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
