@@ -1,0 +1,65 @@
+name: collect
+
+# 매일 한 번 데이터를 긁어 쌓고 사이트를 다시 굽는다.
+# 사람이 아무것도 안 해도 데이터가 늘어나는 게 목적이다.
+on:
+  schedule:
+    # 매일 03:17 UTC. 정각을 피하는 이유는 그때 러너가 몰려 지연되기 때문이다.
+    - cron: "17 3 * * *"
+  workflow_dispatch:        # 손으로도 돌릴 수 있게
+
+permissions:
+  contents: write           # 수집 결과를 커밋해야 한다
+
+concurrency:
+  group: collect
+  cancel-in-progress: false # 수집 도중 끊기면 DB 가 어중간해진다
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # 외부 라이브러리를 안 쓰므로 설치 단계가 없다
+
+      - name: 추출기 테스트
+        # 추출이 깨진 채로 데이터를 쌓으면 되돌리기 어렵다. 먼저 막는다.
+        run: python3 tests/test_hn.py
+
+      - name: 마켓플레이스 수집
+        run: python3 -m scout.cli collect
+
+      - name: 커뮤니티 채굴
+        run: python3 -m scout.cli mine
+
+      - name: 제목에 금액이 명시된 건 통과
+        run: python3 -m scout.cli approve-explicit
+
+      - name: 사이트 생성
+        run: python3 -m scout.cli site
+
+      - name: 변경분 커밋
+        run: |
+          git config user.name  "scout"
+          git config user.email "noreply@github.com"
+          git add data/listings.db site/
+          if git diff --staged --quiet; then
+            echo "변경 없음 — 커밋 생략"
+            exit 0
+          fi
+          DEALS=$(python3 -c "
+          import sqlite3
+          c = sqlite3.connect('data/listings.db')
+          n = c.execute(\"SELECT COUNT(*) FROM listings WHERE exit_price IS NOT NULL\").fetchone()[0]
+          m = c.execute(\"SELECT COUNT(*) FROM claims WHERE status='approved' AND price IS NOT NULL\").fetchone()[0]
+          print(n + m)
+          ")
+          git commit -m "Collect: ${DEALS} deals on record"
+          git push

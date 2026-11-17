@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS listings (
     exit_price      INTEGER,            -- USD (실제 체결가. 팔린 매물만)
     revenue_amount  INTEGER,            -- USD
     revenue_period  TEXT,               -- ttm | annual | monthly | unknown
+    sold_on         TEXT,               -- 체결 시점 (알 수 있을 때만)
     first_seen      TEXT    NOT NULL,
     last_seen       TEXT    NOT NULL,
     raw             TEXT,
@@ -88,23 +89,27 @@ def upsert(conn: sqlite3.Connection, rec: dict) -> int:
                url=COALESCE(?, url),
                asking_price=COALESCE(?, asking_price),
                exit_price=COALESCE(?, exit_price),
-               revenue_amount=?, revenue_period=?, last_seen=?, raw=?
+               revenue_amount=?, revenue_period=?, sold_on=COALESCE(?, sold_on),
+               last_seen=?, raw=?
                WHERE id=?""",
             (rec["title"], rec.get("category"), rec.get("description"), rec.get("url"),
              rec.get("asking_price"), rec.get("exit_price"), rec.get("revenue_amount"),
-             rec.get("revenue_period", "unknown"), ts, rec.get("raw"), listing_id),
+             rec.get("revenue_period", "unknown"), rec.get("sold_on"),
+             ts, rec.get("raw"), listing_id),
         )
     else:
         cur = conn.execute(
             """INSERT INTO listings
                (source, external_key, title, category, description, url,
-                asking_price, exit_price, revenue_amount, revenue_period, first_seen, last_seen, raw)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                asking_price, exit_price, revenue_amount, revenue_period, sold_on,
+                first_seen, last_seen, raw)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (rec["source"], rec["external_key"], rec["title"], rec.get("category"),
              rec.get("description"), rec.get("url"),
              rec.get("asking_price"), rec.get("exit_price"),
              rec.get("revenue_amount"),
-             rec.get("revenue_period", "unknown"), ts, ts, rec.get("raw")),
+             rec.get("revenue_period", "unknown"), rec.get("sold_on"),
+             ts, ts, rec.get("raw")),
         )
         listing_id = cur.lastrowid
 

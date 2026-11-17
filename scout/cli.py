@@ -22,6 +22,11 @@ SOURCES = {
         ],
         parse.parse_microns,
     ),
+    # 브로커 중개 체결 거래. 금액대가 커서 중·대형 구간을 채운다.
+    "flippa": (
+        ["https://flippa.com/lps/closed-deals"],
+        parse.parse_flippa_closed,
+    ),
 }
 
 

@@ -26,7 +26,7 @@ def _rows(conn) -> list[dict]:
 
     # 마켓플레이스에서 실제로 체결된 거래
     for r in conn.execute(
-        """SELECT title, category, exit_price, revenue_amount, source, url
+        """SELECT title, category, exit_price, revenue_amount, source, url, sold_on
            FROM listings WHERE exit_price IS NOT NULL ORDER BY exit_price"""
     ):
         out.append({
@@ -37,7 +37,7 @@ def _rows(conn) -> list[dict]:
             "kind": "marketplace",
             "category": r["category"],
             "url": r["url"] or "https://www.microns.io/",
-            "date": None,
+            "date": r["sold_on"],
         })
 
     # 사람이 승인한 커뮤니티 공개 발언만 싣는다
@@ -96,8 +96,13 @@ def render(conn) -> str:
         for k, v in sorted(st["by_scale"].items(),
                            key=lambda kv: ["micro", "small", "mid", "large"].index(kv[0])))
 
+    def band_of(p):
+        return ("micro" if p < 10_000 else "small" if p < 100_000
+                else "mid" if p < 1_000_000 else "large")
+
     body = "".join(
-        f'<tr data-price="{r["price"]}" data-kind="{_esc(r["kind"])}">'
+        f'<tr data-price="{r["price"]}" data-kind="{_esc(r["kind"])}" '
+        f'data-band="{band_of(r["price"])}">'
         f'<td class="p">{_esc(money(r["price"], r["currency"]))}</td>'
         f'<td class="t"><a href="{_esc(r["url"])}" target="_blank" rel="noopener nofollow">'
         f'{_esc(r["title"])}</a></td>'
@@ -188,17 +193,24 @@ TEMPLATE = """<!doctype html>
 </head>
 <body>
 <div class="wrap">
-  <h1>What indie products actually sold for</h1>
-  <p class="lede">Real sale prices of small software products. Not asking prices &mdash;
+  <h1>What software businesses actually sold for</h1>
+  <p class="lede">From $1,000 weekend projects to $35M exits. Not asking prices &mdash;
      prices someone actually paid.</p>
-  <p class="meta">{total} deals &middot; updated {updated} &middot;
+  <p class="meta"><span id="count">{total}</span> deals &middot; updated {updated} &middot;
      median {median} &middot; range {lo}&ndash;{hi}</p>
 
   <div class="stats">{cards}</div>
 
-  <div class="controls">
-    <button data-filter="all" aria-pressed="true">All</button>
-    <button data-filter="marketplace" aria-pressed="false">Marketplace exits</button>
+  <div class="controls" data-group="band">
+    <button data-band="all" aria-pressed="true">Any size</button>
+    <button data-band="micro" aria-pressed="false">Under $10k</button>
+    <button data-band="small" aria-pressed="false">$10k&ndash;100k</button>
+    <button data-band="mid" aria-pressed="false">$100k&ndash;1M</button>
+    <button data-band="large" aria-pressed="false">$1M+</button>
+  </div>
+  <div class="controls" data-group="kind">
+    <button data-filter="all" aria-pressed="true">All sources</button>
+    <button data-filter="marketplace" aria-pressed="false">Marketplace &amp; broker</button>
     <button data-filter="community" aria-pressed="false">Founder disclosures</button>
   </div>
 
@@ -214,7 +226,7 @@ TEMPLATE = """<!doctype html>
     <p><b>Why this exists.</b> Marketplaces publish what sellers <i>ask</i>.
     What a product actually <i>sold</i> for is scattered across sold-listing pages
     and founder posts, and nowhere collected.</p>
-    <p><b>How it is built.</b> Marketplace rows are published exit prices.
+    <p><b>How it is built.</b> Marketplace and broker rows are published exit prices.
     Founder-disclosure rows are mined from public posts and then read by a human
     before they appear here &mdash; automated extraction alone got the price wrong often
     enough that it could not be trusted unreviewed. Amounts are kept in the currency
@@ -223,14 +235,32 @@ TEMPLATE = """<!doctype html>
   </div>
 </div>
 <script>
-  const btns = document.querySelectorAll('[data-filter]');
-  btns.forEach(b => b.addEventListener('click', () => {{
-    btns.forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-    const f = b.dataset.filter;
-    document.querySelectorAll('#rows tr').forEach(tr => {{
-      tr.style.display = (f === 'all' || tr.dataset.kind === f) ? '' : 'none';
-    }});
-  }}));
+  const state = {{ band: 'all', kind: 'all' }};
+  const rows = [...document.querySelectorAll('#rows tr')];
+  const count = document.getElementById('count');
+
+  function apply() {{
+    let shown = 0;
+    for (const tr of rows) {{
+      const ok = (state.band === 'all' || tr.dataset.band === state.band)
+              && (state.kind === 'all' || tr.dataset.kind === state.kind);
+      tr.style.display = ok ? '' : 'none';
+      if (ok) shown++;
+    }}
+    if (count) count.textContent = shown;
+  }}
+
+  for (const group of document.querySelectorAll('.controls')) {{
+    const key = group.dataset.group;
+    const btns = [...group.querySelectorAll('button')];
+    for (const b of btns) {{
+      b.addEventListener('click', () => {{
+        btns.forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+        state[key] = key === 'band' ? b.dataset.band : b.dataset.filter;
+        apply();
+      }});
+    }}
+  }}
 </script>
 </body>
 </html>

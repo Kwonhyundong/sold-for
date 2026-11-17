@@ -167,3 +167,90 @@ def parse_microns(page: str) -> tuple[list[dict], list[str]]:
             warnings.append(f"카드 {idx} 파싱 실패: {e}")
             continue
     return out, warnings
+
+
+# --- Flippa 체결 거래 -------------------------------------------------------
+# 브로커가 중개한 거래라 금액대가 크다. 소액 구간은 다른 소스가 채운다.
+# 카드 한 장에 자산유형 / 체결월 / 제목 / 연매출 / 양쪽 국가 / 체결가가 들어 있다.
+
+_FL_BADGE = re.compile(r'<span class="badge">([^<]+)</span>')
+_FL_DATE = re.compile(r'<span class="deal-date">([^<]+)</span>')
+_FL_TITLE = re.compile(r'<h2 class="title">(.*?)</h2>', re.S)
+_FL_SIZE = re.compile(r'<span class="deal-size">\s*([^<]+?)\s*(?:<br\s*/?>)?\s*</span>', re.S)
+_FL_STAT = re.compile(
+    r'<div class="stat-item">\s*<label>(.*?)</label>\s*(?:<br\s*/?>)?\s*'
+    r'<strong>(.*?)</strong>', re.S)
+_FL_CASE = re.compile(r'href="(https://flippa\.com/blog/[^"]+)"')
+
+_MONTHS = {m: i for i, m in enumerate(
+    ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], start=1)}
+
+
+def _fl_date(raw: str) -> str | None:
+    """'Apr 2026' -> '2026-04-01'. 날짜를 못 읽으면 None."""
+    m = re.match(r"([A-Za-z]{3})[a-z]*\s+(\d{4})", (raw or "").strip())
+    if not m or m.group(1).title() not in _MONTHS:
+        return None
+    return f"{m.group(2)}-{_MONTHS[m.group(1).title()]:02d}-01"
+
+
+def parse_flippa_closed(page: str) -> tuple[list[dict], list[str]]:
+    """Flippa 의 'Closed Deals' 페이지에서 실제 체결 거래를 읽는다."""
+    out: list[dict] = []
+    warnings: list[str] = []
+
+    chunks = page.split('<div class="listing-card">')[1:]
+    for idx, chunk in enumerate(chunks):
+        try:
+            title_m = _FL_TITLE.search(chunk)
+            size_m = _FL_SIZE.search(chunk)
+            if not title_m or not size_m:
+                continue
+            title = _text(title_m.group(1))
+            price = _money(_text(size_m.group(1)))
+            if not title or not price:
+                continue
+
+            badges = [_text(b) for b in _FL_BADGE.findall(chunk)]
+            # 첫 배지는 자산 유형, 둘째는 'Sold <날짜>' 이므로 유형만 취한다
+            asset_type = badges[0] if badges else None
+            if asset_type and asset_type.lower().startswith("sold"):
+                asset_type = None
+
+            revenue = None
+            period = "unknown"
+            for label_frag, value_frag in _FL_STAT.findall(chunk):
+                label = _text(label_frag).lower()
+                if "revenue" not in label and "profit" not in label:
+                    continue
+                amount = _money(_text(value_frag))
+                if amount is None:
+                    continue
+                revenue = amount
+                period = _period(label)
+                break
+
+            date_m = _FL_DATE.search(chunk)
+            case_m = _FL_CASE.search(chunk)
+
+            out.append({
+                "source": "flippa",
+                "external_key": _slugify(title)[:90],
+                "title": title,
+                "category": asset_type,
+                "description": None,          # 남의 설명문은 싣지 않는다
+                "url": case_m.group(1) if case_m else "https://flippa.com/lps/closed-deals",
+                "asking_price": None,
+                "exit_price": price,
+                "revenue_amount": revenue,
+                "revenue_period": period,
+                "sold_on": _fl_date(date_m.group(1)) if date_m else None,
+            })
+        except Exception as e:
+            warnings.append(f"Flippa 카드 {idx} 파싱 실패: {e}")
+            continue
+
+    if not out:
+        warnings.append("Flippa: 카드를 하나도 못 읽었다 — 페이지 구조가 바뀌었을 수 있다")
+    return out, warnings
