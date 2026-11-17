@@ -9,7 +9,10 @@ import sys
 from . import analyze, fetch, parse, store
 
 SOURCES = {
+    # 부르는 값(현재 매물)
     "microns": ("https://www.microns.io/", parse.parse_microns),
+    # 실제 체결가(판매 완료) — 호가보다 훨씬 값진 데이터
+    "microns_sold": ("https://www.microns.io/sell-your-startup", parse.parse_microns),
 }
 
 
@@ -28,6 +31,7 @@ def collect() -> None:
             print(f"  ! {w}")
         seen: set[int] = set()
         for rec in records:
+            rec["source"] = name
             seen.add(store.upsert(conn, rec))
         gone = store.mark_absent(conn, name, seen)
         conn.commit()

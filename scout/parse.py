@@ -77,15 +77,19 @@ def parse_microns(page: str) -> tuple[list[dict], list[str]]:
             slug_m = re.search(r'href="/startup-listings/([^"]+)"', chunk)
 
             pairs = _PAIR.findall(chunk)
-            asking = revenue = None
+            asking = revenue = exit_price = None
             period = "unknown"
-            n_asking = n_revenue = 0
+            n_asking = n_revenue = n_exit = 0
             for value_frag, label_frag in pairs:
                 amount = _money(_text(value_frag))
                 label = _text(label_frag).lower()
                 if amount is None:
                     continue
-                if "asking" in label or "price" in label:
+                if "exit" in label:
+                    if n_exit == 0:
+                        exit_price = amount
+                    n_exit += 1
+                elif "asking" in label or "price" in label:
                     if n_asking == 0:
                         asking = amount
                     n_asking += 1
@@ -94,13 +98,13 @@ def parse_microns(page: str) -> tuple[list[dict], list[str]]:
                         revenue, period = amount, _period(label)
                     n_revenue += 1
 
-            if asking is None and revenue is None:
+            if asking is None and revenue is None and exit_price is None:
                 continue
 
             # 자기 검증: 카드 하나에 호가/매출이 각각 두 번 이상 나오면 경계가 샌 것이다
-            if n_asking > 1 or n_revenue > 1:
+            if n_asking > 1 or n_revenue > 1 or n_exit > 1:
                 warnings.append(
-                    f"[{title[:40]}] 한 카드에서 호가 {n_asking}개 / 매출 {n_revenue}개 발견 — 경계 의심")
+                    f"[{title[:40]}] 한 카드에서 호가 {n_asking} / 매출 {n_revenue} / 체결 {n_exit} 발견 — 경계 의심")
 
             out.append({
                 "source": "microns",
@@ -110,6 +114,7 @@ def parse_microns(page: str) -> tuple[list[dict], list[str]]:
                 "category": _text(tag_m.group(1)) if tag_m else None,
                 "description": _text(desc_m.group(1)) if desc_m else None,
                 "asking_price": asking,
+                "exit_price": exit_price,
                 "revenue_amount": revenue,
                 "revenue_period": period,
             })
