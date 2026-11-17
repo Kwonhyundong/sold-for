@@ -1,0 +1,50 @@
+================================================================
+TITLE  (제목 칸에 붙여넣기)
+================================================================
+
+I collected 198 real sale prices of software businesses — what they actually sold for, not what sellers asked
+
+
+================================================================
+BODY  (본문 칸에 붙여넣기)
+================================================================
+
+Every marketplace shows you what sellers **ask**. Almost nobody publishes what
+things actually **sold** for. I kept running into that while trying to figure
+out what a small product is worth, so I pulled the closed-deal data that is
+public but scattered across a dozen places and put it in one table.
+
+198 deals so far, from $1,000 weekend projects up to a $2B acquisition.
+Sources are marketplace exit prices, broker closed-deal records, and founder
+posts I read one at a time.
+
+https://kwonhyundong.github.io/claude_Dev_Profit/
+
+Two things surprised me:
+
+**Small products sell at high multiples; big ones don't.** Under $10k, the
+median deal cleared at about 8× annual revenue. In the $100k–$1M range it's
+about 0.9×. Price seems to have a floor near $1,000 no matter what a product
+earns, so a tiny product clears at many times its revenue while a real
+business clears at roughly one year of it.
+
+**Seven products earning under $600/year still sold** — for $1,000, $1,000,
+$1,000, $1,050, $2,000, $5,000 and $5,000. If you have something small sitting
+unused, that's roughly the floor.
+
+There's also a valuation page that takes your revenue and shows you the
+closest real deals instead of applying a formula, because a formula picks a
+band and can be quietly wrong about which one:
+
+https://kwonhyundong.github.io/claude_Dev_Profit/worth/
+
+**Honest limits.** The under-$10k band has only 10 deals with revenue
+attached, so treat that 8× as a hint rather than a number. Broker deals skew
+the whole dataset toward $100k+. And comparables mix SaaS, content sites and
+ecommerce, which sell at very different multiples of the same revenue — that's
+why the individual deals are listed instead of just a range.
+
+Free, no signup, no ads, no email capture. It re-collects and republishes
+itself every day.
+
+Happy to add sources if you know of closed-deal data I've missed.
