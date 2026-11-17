@@ -33,6 +33,28 @@ CREATE TABLE IF NOT EXISTS snapshots (
 );
 
 CREATE INDEX IF NOT EXISTS idx_snap_listing ON snapshots(listing_id, seen_at);
+
+-- 커뮤니티에 공개된 "얼마에 팔았다" 발언.
+-- 마켓플레이스 매물(listings)과 성격이 달라 테이블을 나눈다:
+-- 이쪽은 사람이 한 주장이라 사람의 승인을 거쳐야 공개할 수 있다.
+CREATE TABLE IF NOT EXISTS claims (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    source       TEXT    NOT NULL,          -- hn | reddit | ...
+    external_key TEXT    NOT NULL,          -- 원글 id
+    url          TEXT    NOT NULL,          -- 출처 링크 (반드시 보존)
+    title        TEXT    NOT NULL,
+    price        INTEGER,                   -- 추출값 (환산하지 않음)
+    currency     TEXT,                      -- USD | GBP | EUR | ... (원 통화 그대로)
+    direction    TEXT,                      -- sold | acquired | unknown
+    points       INTEGER,
+    posted_at    TEXT,
+    status       TEXT    NOT NULL DEFAULT 'pending',  -- pending | approved | rejected
+    note         TEXT,
+    found_at     TEXT    NOT NULL,
+    UNIQUE(source, external_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_claims_status ON claims(status, price);
 """
 
 
@@ -99,3 +121,22 @@ def mark_absent(conn: sqlite3.Connection, source: str, seen_ids: set[int]) -> in
             (lid, ts),
         )
     return len(missing)
+
+
+def upsert_claim(conn: sqlite3.Connection, rec: dict) -> bool:
+    """판매 주장 1건 저장. 이미 있으면 건드리지 않는다 —
+    사람이 이미 승인/거절한 판정을 재수집이 덮어쓰면 안 되기 때문이다."""
+    cur = conn.execute(
+        "SELECT 1 FROM claims WHERE source=? AND external_key=?",
+        (rec["source"], rec["external_key"]),
+    )
+    if cur.fetchone():
+        return False
+    conn.execute(
+        """INSERT INTO claims
+           (source, external_key, url, title, price, currency, direction, points, posted_at, found_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?)""",
+        (rec["source"], rec["external_key"], rec["url"], rec["title"], rec.get("price"),
+         rec.get("currency"), rec.get("direction"), rec.get("points"), rec.get("posted_at"), now()),
+    )
+    return True
