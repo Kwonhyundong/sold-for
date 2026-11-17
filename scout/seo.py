@@ -9,6 +9,7 @@
 """
 import html
 import re
+import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -287,6 +288,26 @@ sale prices</a>, collected daily from closed deals.</footer>"""
     (path / "index.html").write_text(_page(heading, desc, url, body), encoding="utf-8")
 
 
+STATIC = Path(__file__).resolve().parent.parent / "static"
+
+
+def copy_static(out: Path) -> int:
+    """static/ 의 파일을 사이트 루트로 그대로 복사한다.
+
+    검색엔진 소유권 확인 파일처럼, 생성기가 만들지 않지만 반드시
+    그 자리에 있어야 하는 것들이 여기 들어간다. 사이트에 직접 두면
+    다시 생성할 때 사라지고, 사라져도 아무 소리가 나지 않는다.
+    """
+    if not STATIC.is_dir():
+        return 0
+    n = 0
+    for src in STATIC.iterdir():
+        if src.is_file():
+            shutil.copy2(src, out / src.name)
+            n += 1
+    return n
+
+
 def build(conn, out: Path = OUT) -> dict:
     deals = load(conn)
     total = total_records(conn)
@@ -339,5 +360,8 @@ def build(conn, out: Path = OUT) -> dict:
     (out / "robots.txt").write_text(
         f"User-agent: *\nAllow: /\n\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")
 
-    return {"deals": len(deals), "total": total, "bands": len(BANDS),
+    n_static = copy_static(out)
+
+    return {"deals": len(deals), "total": total, "static": n_static,
+            "bands": len(BANDS),
             "categories": len(cats), "urls": len(urls)}

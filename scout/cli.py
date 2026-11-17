@@ -144,6 +144,8 @@ def build_site() -> None:
     print(f"사이트 생성:\n  {a}\n  {b}")
     print(f"  개별 페이지 {stats['deals']}개 · 금액대 {stats['bands']}개 · "
           f"업종 {stats['categories']}개 → 사이트맵 {stats['urls']}개 URL")
+    if stats.get("static"):
+        print(f"  static 파일 {stats['static']}개 복사")
 
 
 def report() -> None:
