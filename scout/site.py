@@ -128,8 +128,8 @@ TEMPLATE = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>What Indie Products Actually Sold For</title>
-<meta name="description" content="Real sale prices of small software products — collected from marketplace exits and public founder disclosures. Not asking prices.">
+<title>What Software Businesses Actually Sold For</title>
+<meta name="description" content="Real sale prices — from $1,000 weekend projects to $35M exits. Collected from marketplace exits, broker closed deals and founder disclosures. Not asking prices.">
 <style>
   :root {{
     --bg:#fbfaf8; --fg:#1a1a18; --muted:#6c6a66; --line:#e4e1db;
