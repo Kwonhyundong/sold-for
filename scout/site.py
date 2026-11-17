@@ -9,6 +9,8 @@
 import html
 import json
 from datetime import datetime, timezone
+
+from . import seo
 from pathlib import Path
 
 OUT_DIR = Path(__file__).resolve().parent.parent / "site"
@@ -23,12 +25,16 @@ SCALE_LABEL = {
 
 def _rows(conn) -> list[dict]:
     out = []
+    # 상세 페이지 슬러그를 같은 생성기에서 받아온다 — 양쪽이 어긋나면
+    # 링크가 404 가 되므로 슬러그는 한 곳에서만 만든다.
+    slugs = {(d.title, d.price): d.slug for d in seo.load(conn)}
 
     # 마켓플레이스에서 실제로 체결된 거래
     for r in conn.execute(
         """SELECT title, category, exit_price, revenue_amount, source, url, sold_on
            FROM listings WHERE exit_price IS NOT NULL ORDER BY exit_price"""
     ):
+        slug = slugs.get((r["title"], r["exit_price"]))
         out.append({
             "title": r["title"],
             "price": r["exit_price"],
@@ -36,7 +42,9 @@ def _rows(conn) -> list[dict]:
             "revenue": r["revenue_amount"],
             "kind": "marketplace",
             "category": r["category"],
-            "url": r["url"] or "https://www.microns.io/",
+            "url": (f"{seo.SITE}/deals/{slug}/" if slug
+                    else (r["url"] or "https://www.microns.io/")),
+            "internal": bool(slug),
             "date": r["sold_on"],
         })
 
@@ -54,6 +62,7 @@ def _rows(conn) -> list[dict]:
             "kind": "community",
             "category": r["direction"],
             "url": r["url"],
+            "internal": False,
             "date": r["posted_at"],
         })
 
@@ -104,8 +113,10 @@ def render(conn) -> str:
         f'<tr data-price="{r["price"]}" data-kind="{_esc(r["kind"])}" '
         f'data-band="{band_of(r["price"])}">'
         f'<td class="p">{_esc(money(r["price"], r["currency"]))}</td>'
-        f'<td class="t"><a href="{_esc(r["url"])}" target="_blank" rel="noopener nofollow">'
-        f'{_esc(r["title"])}</a></td>'
+        f'<td class="t">' + (
+            f'<a href="{_esc(r["url"])}">{_esc(r["title"])}</a>' if r.get("internal")
+            else f'<a href="{_esc(r["url"])}" target="_blank" rel="noopener nofollow">'
+                 f'{_esc(r["title"])}</a>') + '</td>'
         f'<td class="r">{_esc(money(r["revenue"]) if r["revenue"] else "—")}</td>'
         f'<td class="k"><span class="tag {_esc(r["kind"])}">'
         f'{"marketplace" if r["kind"] == "marketplace" else "community"}</span></td>'
@@ -113,7 +124,25 @@ def render(conn) -> str:
         f'</tr>'
         for r in rows)
 
+    # 구간·업종 페이지로 가는 내부 링크. 검색엔진이 상세 페이지까지
+    # 타고 들어갈 경로이자, 사람이 자기 구간만 보는 입구다.
+    bands_html = "".join(
+        f'<a class="chip" href="{seo.SITE}/price/{k}/">{_esc(lbl)}</a>'
+        for k, _lo, _hi, lbl in seo.BANDS)
+    cat_counts: dict[str, tuple[str, int]] = {}
+    for d in seo.load(conn):
+        c = seo._cat_slug(d.category)
+        if not c:
+            continue
+        name, n = cat_counts.get(c, (d.category, 0))
+        cat_counts[c] = (name, n + 1)
+    cats_html = "".join(
+        f'<a class="chip" href="{seo.SITE}/category/{c}/">{_esc(name)} <b>{n}</b></a>'
+        for c, (name, n) in sorted(cat_counts.items(), key=lambda kv: -kv[1][1])
+        if n >= 3)
+
     return TEMPLATE.format(
+        bands=bands_html, cats=cats_html,
         updated=updated, total=st["total"],
         median=money(st["median"]) if st["median"] else "—",
         lo=money(st["min"]) if st["min"] else "—",
@@ -180,6 +209,14 @@ TEMPLATE = """<!doctype html>
   td.t a:hover {{ color:var(--accent); border-color:var(--accent); }}
   .tag {{ font-size:12px; padding:2px 9px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }}
   .tag.marketplace {{ border-color:var(--accent); color:var(--accent); }}
+  .browse {{ margin-top:38px; }}
+  .browse h2 {{ font-size:13px; text-transform:uppercase; letter-spacing:.07em;
+    color:var(--muted); margin:20px 0 10px; font-weight:600; }}
+  .chip {{ display:inline-block; margin:0 7px 7px 0; padding:6px 13px;
+    border:1px solid var(--line); border-radius:999px; background:var(--card);
+    color:var(--fg); text-decoration:none; font-size:14px; }}
+  .chip:hover {{ border-color:var(--accent); color:var(--accent); }}
+  .chip b {{ color:var(--muted); font-weight:500; }}
   .note {{
     margin-top:40px; padding:18px 20px; background:var(--card);
     border:1px solid var(--line); border-radius:10px; font-size:14px; color:var(--muted);
@@ -221,6 +258,13 @@ TEMPLATE = """<!doctype html>
     </tr></thead>
     <tbody id="rows">{body}</tbody>
   </table>
+
+  <div class="browse">
+    <h2>Browse by deal size</h2>
+    {bands}
+    <h2>Browse by type</h2>
+    {cats}
+  </div>
 
   <div class="note">
     <p><b>Why this exists.</b> Marketplaces publish what sellers <i>ask</i>.
