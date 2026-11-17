@@ -1,4 +1,4 @@
-# claude_Dev_Profit
+# sold-for
 
 집에서, 자본 없이, 자동화된 수익 구조를 만들기 위한 작업 저장소.
 
