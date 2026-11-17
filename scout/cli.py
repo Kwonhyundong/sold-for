@@ -10,7 +10,7 @@
 """
 import sys
 
-from . import analyze, fetch, hn, parse, site, store
+from . import analyze, calc_site, fetch, hn, parse, site, store
 
 # 한 마켓플레이스가 여러 페이지에 걸쳐 있어도 source 는 하나로 둔다.
 # 나누면 같은 매물이 두 행으로 들어온다 (UNIQUE 가 source 를 포함하므로).
@@ -137,9 +137,10 @@ def approve_explicit() -> None:
 
 def build_site() -> None:
     conn = store.connect()
-    path = site.build(conn)
+    a = site.build(conn)          # 제품 #1 — 체결가 데이터베이스
+    b = calc_site.build(conn)     # 제품 #2 — 가격 적정성 계산기
     conn.close()
-    print(f"사이트 생성: {path}")
+    print(f"사이트 생성:\n  {a}\n  {b}")
 
 
 def report() -> None:
